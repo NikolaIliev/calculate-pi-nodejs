@@ -1,0 +1,11 @@
+{
+  "name": "pi-ramanujan",
+  "version": "1.0.0",
+  "description": "A node.js project which calculates PI using multi-processing with the node cluster module.",
+  "main": "pi.js",
+  "dependencies": {
+    "mathjs": "~1.7.0"
+  },
+  "author": "Nikola Iliev <nikola.iliev93@gmail.com>",
+  "license": "MIT"
+}
