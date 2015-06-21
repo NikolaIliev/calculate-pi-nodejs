@@ -18,54 +18,56 @@ function log(logString, force) {
 }
 
 function spawnInitial() {
-    var i;
-
-    for (i = 0; i < args.threads; i++) {
+    for (var i = 0; i < Math.min(args.threads, args.precision); i++) {
         spawn();
     }
 }
 
 function spawn(n) {
-    var worker;
+    var worker = cluster.fork();
 
-    if (n != undefined) {
-        //  If 'n' is passed explicitly - use that
-        //  This only happens when a worker has errored and work on 'n' needs to be restarted
-        log('Spawning ' + n);
-        worker = cluster.fork({ n: n });
-        onWorkerSpawn(worker, n);
-    } else if (next < args.precision) {
-        //  If there is more work to do, spawn next worker
-        log('Spawning ' + next);
-        worker = cluster.fork({ n: next });
-        onWorkerSpawn(worker, next);
-        next++;
-    } else if (!Object.keys(workers).length) {
-        //  Nobody's working and there's no more work to do
-        done();
+    workers[worker.id] = { worker: worker };
+    worker.on('message', onWorkerMessage.bind(null, worker));
+
+    if (n == undefined) {
+        schedule(worker);
+    } else {
+        reschedule(worker, n);
     }
 }
 
-function onWorkerSpawn(worker, n) {
-    workers[worker.id] = n;
-    worker.on('message', onWorkerMessage);
+function schedule(worker) {
+    if (next <= args.precision) {
+        log('Started on ' + next);
+        worker.send(next);
+        workers[worker.id].n = next;
+        next++;
+    } else {
+        worker.disconnect();
+    }
 }
 
-function onWorkerMessage(msg) {
+function reschedule(worker, n) {
+    worker.send(n);
+    workers[worker.id].n = n;
+}
+
+function onWorkerMessage(worker, msg) {
     log('Done for n=' + msg.n);
     result = math.eval('r1 + r2', { r1: math.bignumber(result), r2: math.bignumber(msg.result) });
+    schedule(worker);
 }
 
 function onWorkerDisconnect(worker) {
-    var n = workers[worker.id];
+    var n = workers[worker.id].n;
 
     delete workers[worker.id];
 
     if (!worker.suicide) { // accidental disconnect
         log('n=' + n + ' Failed - restarting');
         spawn(n);
-    } else {
-        spawn();
+    } else if (!Object.keys(workers).length) {
+        done();
     }
 }
 
@@ -74,7 +76,6 @@ function done() {
     var pi = math.eval('1 / (m1 * r)', { m1: math.bignumber(m1), r: math.bignumber(result) });
     log(+ new Date() - startms + 'ms', true);
     fs.writeFileSync(args.output, pi.toString());
-    process.exit(0);
 }
 
 cluster.on('exit', onWorkerDisconnect);
