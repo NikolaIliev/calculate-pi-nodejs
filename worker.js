@@ -1,5 +1,5 @@
 var worker = require('cluster').worker;
-var math = require('mathjs').create({ number: 'bignumber', precision: 1000 });
+var math = require('mathjs').create({ number: 'bignumber', precision: 100 });
 
 //  Uncomment to test failing workers
 //if (Math.random() > 0.5) {
