@@ -63,7 +63,7 @@ function onWorkerDisconnect(worker) {
 
     delete workers[worker.id];
 
-    if (!worker.suicide) { // accidental disconnect
+    if (!worker.exitedAfterDisconnect) { // accidental disconnect
         log('n=' + n + ' Failed - restarting');
         spawn(n);
     } else if (!Object.keys(workers).length) {
